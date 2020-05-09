@@ -100,7 +100,7 @@ intel_sanity_check(struct pci_access *a, struct pci_methods *m)
 static int
 conf1_detect(struct pci_access *a)
 {
-  unsigned int tmp;
+  DWORD tmp;
   int res = 0;
 
   if (!conf12_setup_io(a))
@@ -111,9 +111,11 @@ conf1_detect(struct pci_access *a)
 
   intel_io_lock();
   outb (0x01, 0xCFB);
-  tmp = inl (0xCF8);
+  DWORD tmp2;
+  GetPortVal(0xCF8, &tmp, 4);
   outl (0x80000000, 0xCF8);
-  if (inl (0xCF8) == 0x80000000)
+  GetPortVal(0xCF8, &tmp2, 4);
+  if (tmp2 == 0x80000000)
     res = 1;
   outl (tmp, 0xCF8);
   intel_io_unlock();
@@ -134,17 +136,21 @@ conf1_read(struct pci_dev *d, int pos, byte *buf, int len)
 
   intel_io_lock();
   outl(0x80000000 | ((d->bus & 0xff) << 16) | (PCI_DEVFN(d->dev, d->func) << 8) | (pos&~3), 0xcf8);
-
+  DWORD temp;
   switch (len)
     {
     case 1:
-      buf[0] = inb(addr);
+	  GetPortVal(addr, &temp, 1);
+      buf[0] = temp;
+	  //buf[0] = inb(addr);
       break;
     case 2:
-      ((u16 *) buf)[0] = cpu_to_le16(inw(addr));
+	  GetPortVal(addr, &temp, 2);
+      ((u16 *) buf)[0] = cpu_to_le16(temp);
       break;
     case 4:
-      ((u32 *) buf)[0] = cpu_to_le32(inl(addr));
+	  GetPortVal(addr, &temp, 4);
+      ((u32 *) buf)[0] = cpu_to_le32(temp);
       break;
     default:
       res = pci_generic_block_read(d, pos, buf, len);
@@ -205,7 +211,10 @@ conf2_detect(struct pci_access *a)
   outb(0x00, 0xCFB);
   outb(0x00, 0xCF8);
   outb(0x00, 0xCFA);
-  if (inb(0xCF8) == 0x00 && inb(0xCFA) == 0x00)
+  DWORD temp1, temp2;
+  GetPortVal(0xCF8, &temp1, 1);
+  GetPortVal(0xCFA, &temp2, 1);
+  if (temp1 == 0x00 && temp2 == 0x00)
     res = intel_sanity_check(a, &pm_intel_conf2);
   intel_io_unlock();
   return res;
@@ -227,8 +236,10 @@ conf2_read(struct pci_dev *d, int pos, byte *buf, int len)
   intel_io_lock();
   outb((d->func << 1) | 0xf0, 0xcf8);
   outb(d->bus, 0xcfa);
+  DWORD temp;
   switch (len)
     {
+	/*
     case 1:
       buf[0] = inb(addr);
       break;
@@ -237,6 +248,22 @@ conf2_read(struct pci_dev *d, int pos, byte *buf, int len)
       break;
     case 4:
       ((u32 *) buf)[0] = cpu_to_le32(inl(addr));
+      break;
+    default:
+      res = pci_generic_block_read(d, pos, buf, len);
+	*/
+	case 1:
+	  GetPortVal(addr, &temp, 1);
+      buf[0] = temp;
+	  //buf[0] = inb(addr);
+      break;
+    case 2:
+	  GetPortVal(addr, &temp, 2);
+      ((u16 *) buf)[0] = cpu_to_le16(temp);
+      break;
+    case 4:
+	  GetPortVal(addr, &temp, 4);
+      ((u32 *) buf)[0] = cpu_to_le32(temp);
       break;
     default:
       res = pci_generic_block_read(d, pos, buf, len);
