@@ -7,3 +7,6 @@ setpci
 example
 update-pciids
 pci.ids.gz
+*.exe
+*.dll
+
